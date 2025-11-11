@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CarSave - Ahorro Inteligente para tu Carro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #0f172a;
+        color: #f1f5f9;
+        font-family: "Inter", sans-serif;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 256px;
+        height: 100vh;
+        background: #0f172a;
+        border-right: 1px solid #334155;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        z-index: 1000;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+          box-shadow 0.4s ease-out;
+        transform: translateX(0);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .sidebar.hidden {
+        transform: translateX(-110%);
+        box-shadow: none;
+      }
+
+      .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 999;
+        transition: background 0.4s ease-out;
+      }
+
+      .overlay.active {
+        display: block;
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      .main-content {
+        margin-left: 256px;
+        transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .main-content.full-width {
+        margin-left: 0;
+      }
+
+      .hamburger {
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+      }
+
+      .hamburger span {
+        display: block;
+        width: 24px;
+        height: 2px;
+        background: #06b6d4;
+        border-radius: 2px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .hamburger.active span:nth-child(1) {
+        transform: rotate(45deg) translate(12px, 12px);
+      }
+
+      .hamburger.active span:nth-child(2) {
+        opacity: 0;
+        transition: opacity 0.2s ease-out;
+      }
+
+      .hamburger.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(9px, -9px);
+      }
+
+      .nav-item {
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: 500;
+      }
+
+      .nav-item:hover {
+        background: #1e293b;
+        transform: translateX(6px);
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.1);
+      }
+
+      .nav-item.active {
+        background: #1e293b;
+        color: #06b6d4;
+        border-left: 3px solid #06b6d4;
+        padding-left: 9px;
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+        animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .section {
+        display: none;
+      }
+
+      .section.active {
+        display: block;
+        animation: fadeInSection 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes fadeInSection {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideInToast 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        font-weight: 600;
+      }
+
+      @keyframes slideInToast {
+        from {
+          opacity: 0;
+          transform: translateY(20px) translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) translateX(0);
+        }
+      }
+
+      .toast-success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+      }
+
+      .toast-error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+      }
+
+      .toast-warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+      }
+
+      @media (max-width: 768px) {
+        .hamburger {
+          display: flex;
+        }
+
+        .main-content {
+          margin-left: 0;
+        }
+
+        .sidebar {
+          width: 70vw;
+          max-width: 256px;
+          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.7);
+        }
+
+        .sidebar.hidden {
+          transform: translateX(-110%);
+        }
+      }
+
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-slate-50">
+    <div class="sidebar" id="sidebar">
+      <div class="mb-12">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center"
+            >
+              <i class="fas fa-car text-white text-lg"></i>
+            </div>
+            <span class="text-xl font-bold text-white">CarSave</span>
+          </div>
+          <button
+            onclick="toggleMenu()"
+            class="text-cyan-400 hover:text-cyan-300 text-2xl transition md:hidden"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <p class="text-slate-400 text-xs font-medium">v1.0</p>
+      </div>
+
+      <nav class="space-y-2 flex-1">
+        <div class="nav-item active" onclick="changeSection('dashboard', this)">
+          <i class="fas fa-home mr-3"></i>Dashboard
+        </div>
+        <div class="nav-item" onclick="changeSection('add', this)">
+          <i class="fas fa-plus-circle mr-3"></i>Agregar
+        </div>
+        <div class="nav-item" onclick="changeSection('history', this)">
+          <i class="fas fa-chart-line mr-3"></i>Historial
+        </div>
+        <div class="nav-item" onclick="changeSection('settings', this)">
+          <i class="fas fa-cog mr-3"></i>Configuración
+        </div>
+      </nav>
+
+      <div class="pt-8 border-t border-slate-800 text-center">
+        <p class="text-slate-400 text-xs">Tus datos están seguros</p>
+        <p class="text-slate-500 text-xs mt-1">Guardados localmente</p>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <div class="main-content" id="mainContent">
+      <header
+        class="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 px-8 py-4 flex items-center justify-between"
+      >
+        <div class="flex items-center gap-4">
+          <button class="hamburger" id="hamburger" onclick="toggleMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div>
+            <h1 class="text-2xl font-bold text-white">Dashboard</h1>
+            <p class="text-slate-400 text-sm mt-1">Bienvenido de vuelta</p>
+          </div>
+        </div>
+        <div class="text-right text-slate-400">
+          <p class="text-sm font-medium" id="currentDate"></p>
+          <p class="text-xs mt-1">Tu progreso hoy</p>
+        </div>
+      </header>
+
+      <main class="p-8">
+        <!-- DASHBOARD -->
+        <div class="section active" id="dashboard">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div class="lg:col-span-1">
+              <div
+                class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden h-full flex flex-col"
+              >
+                <div
+                  class="relative bg-gradient-to-b from-slate-700 to-slate-800 aspect-video overflow-hidden"
+                >
+                  <div
+                    id="carPlaceholder"
+                    class="absolute inset-0 flex flex-col items-center justify-center bg-slate-700"
+                  >
+                    <i class="fas fa-car text-slate-500 text-5xl mb-2"></i>
+                    <p class="text-slate-400 text-sm">Tu carro meta</p>
+                  </div>
+                  <img
+                    id="carPhoto"
+                    src=""
+                    alt="Carro"
+                    class="w-full h-full object-cover"
+                    style="display: none"
+                  />
+                </div>
+
+                <div class="p-6 flex-1 flex flex-col">
+                  <div class="mb-6">
+                    <p
+                      class="text-slate-400 text-xs font-semibold uppercase mb-2"
+                    >
+                      Meta de Ahorro
+                    </p>
+                    <div class="flex items-end gap-2">
+                      <span class="text-4xl font-bold text-white">$</span>
+                      <input
+                        type="number"
+                        id="goalInput"
+                        placeholder="0"
+                        class="flex-1 text-3xl font-bold bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-cyan-500 transition"
+                        min="0"
+                        step="100"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    class="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-lg mb-3"
+                    onclick="setGoal()"
+                  >
+                    Establecer Meta
+                  </button>
+
+                  <label
+                    for="photoInput"
+                    class="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium rounded-lg transition text-center cursor-pointer block"
+                  >
+                    <i class="fas fa-image mr-2"></i>Cambiar Foto
+                  </label>
+                  <input
+                    type="file"
+                    id="photoInput"
+                    accept="image/*"
+                    style="display: none"
+                  />
+
+                  <button
+                    id="deletePhotoBtn"
+                    class="w-full px-4 py-2 bg-red-900/20 hover:bg-red-900/40 text-red-400 font-medium rounded-lg mt-2"
+                    style="display: none"
+                    onclick="deletePhoto()"
+                  >
+                    <i class="fas fa-trash mr-2"></i>Eliminar Foto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:col-span-2">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div
+                  class="bg-slate-800 border border-slate-700 rounded-2xl p-6"
+                >
+                  <p
+                    class="text-slate-400 text-xs font-semibold uppercase mb-2"
+                  >
+                    Total Ahorrado
+                  </p>
+                  <p class="text-3xl font-bold text-white mt-2">
+                    $<span id="totalDisplay">0</span>
+                  </p>
+                </div>
+                <div
+                  class="bg-slate-800 border border-slate-700 rounded-2xl p-6"
+                >
+                  <p
+                    class="text-slate-400 text-xs font-semibold uppercase mb-2"
+                  >
+                    Faltante
+                  </p>
+                  <p class="text-3xl font-bold text-white mt-2">
+                    $<span id="remainingDisplay">0</span>
+                  </p>
+                </div>
+                <div
+                  class="bg-slate-800 border border-slate-700 rounded-2xl p-6"
+                >
+                  <p
+                    class="text-slate-400 text-xs font-semibold uppercase mb-2"
+                  >
+                    Progreso
+                  </p>
+                  <p class="text-3xl font-bold text-white mt-2">
+                    <span id="percentDisplay">0</span>%
+                  </p>
+                </div>
+                <div
+                  class="bg-slate-800 border border-slate-700 rounded-2xl p-6"
+                >
+                  <p
+                    class="text-slate-400 text-xs font-semibold uppercase mb-2"
+                  >
+                    Meses
+                  </p>
+                  <p class="text-3xl font-bold text-white mt-2">
+                    <span id="monthsDisplay">--</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                  <p class="text-slate-300 font-semibold">Progreso General</p>
+                  <p class="text-cyan-400 font-bold">
+                    <span id="progressPercent">0</span>%
+                  </p>
+                </div>
+                <div
+                  class="relative h-3 bg-slate-700 rounded-full overflow-hidden"
+                >
+                  <div
+                    id="progressFill"
+                    class="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500"
+                    style="width: 0%; transition: width 0.7s ease"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h3 class="text-white font-bold mb-6">Distribución</h3>
+              <canvas id="chartCanvas" style="max-height: 280px"></canvas>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-plus-circle text-emerald-400 mr-2"></i
+                >Registrar Ahorro
+              </h2>
+              <div class="space-y-4">
+                <input
+                  type="number"
+                  id="monthlyInput"
+                  placeholder="Ahorro mensual"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="number"
+                  id="extraInput"
+                  placeholder="Ahorro extra"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="text"
+                  id="descInput"
+                  placeholder="Descripción"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                />
+                <button
+                  class="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-lg"
+                  onclick="addSaving()"
+                >
+                  <i class="fas fa-check mr-2"></i>Registrar
+                </button>
+              </div>
+              <div class="mt-6 pt-6 border-t border-slate-700">
+                <h4 class="text-slate-300 font-semibold mb-4">Últimos</h4>
+                <div
+                  id="savingsList"
+                  class="space-y-2 max-h-32 overflow-y-auto"
+                >
+                  <p class="text-slate-500 text-xs">Sin registros</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-minus-circle text-red-400 mr-2"></i>Gastos
+                Inesperados
+              </h2>
+              <div class="space-y-4">
+                <input
+                  type="number"
+                  id="expenseAmtInput"
+                  placeholder="Monto"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="text"
+                  id="expenseDescInput"
+                  placeholder="Descripción"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500"
+                />
+                <select
+                  id="expenseCatInput"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                >
+                  <option value="Otro">Otro</option>
+                  <option value="Emergencia">Emergencia</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Deuda">Deuda</option>
+                </select>
+                <button
+                  class="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold rounded-lg"
+                  onclick="addExpense()"
+                >
+                  <i class="fas fa-minus mr-2"></i>Registrar
+                </button>
+              </div>
+              <div class="mt-6 pt-6 border-t border-slate-700">
+                <h4 class="text-slate-300 font-semibold mb-4">Últimos</h4>
+                <div
+                  id="expensesList"
+                  class="space-y-2 max-h-32 overflow-y-auto"
+                >
+                  <p class="text-slate-500 text-xs">Sin registros</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AGREGAR -->
+        <div class="section" id="add">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-plus-circle text-emerald-400 mr-2"></i>Nuevo
+                Ahorro
+              </h2>
+              <div class="space-y-4">
+                <input
+                  type="number"
+                  id="addMonthly"
+                  placeholder="Ahorro mensual"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="number"
+                  id="addExtra"
+                  placeholder="Ahorro extra"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="text"
+                  id="addDesc"
+                  placeholder="Descripción"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500"
+                />
+                <button
+                  class="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-lg"
+                  onclick="savingFromAdd()"
+                >
+                  <i class="fas fa-plus mr-2"></i>Agregar
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-minus-circle text-red-400 mr-2"></i>Nuevo Gasto
+              </h2>
+              <div class="space-y-4">
+                <input
+                  type="number"
+                  id="addExpenseAmt"
+                  placeholder="Monto"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500"
+                  min="0"
+                  step="0.01"
+                />
+                <input
+                  type="text"
+                  id="addExpenseDesc"
+                  placeholder="Descripción"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500"
+                />
+                <select
+                  id="addExpenseCat"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                >
+                  <option value="Otro">Otro</option>
+                  <option value="Emergencia">Emergencia</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Deuda">Deuda</option>
+                </select>
+                <button
+                  class="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold rounded-lg"
+                  onclick="expenseFromAdd()"
+                >
+                  <i class="fas fa-minus mr-2"></i>Agregar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div class="section" id="history">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-arrow-up text-emerald-400 mr-2"></i>Ahorros
+              </h2>
+              <div id="fullSavings" class="space-y-2 max-h-96 overflow-y-auto">
+                <p class="text-slate-500 text-xs">Sin registros</p>
+              </div>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">
+                <i class="fas fa-arrow-down text-red-400 mr-2"></i>Gastos
+              </h2>
+              <div id="fullExpenses" class="space-y-2 max-h-96 overflow-y-auto">
+                <p class="text-slate-500 text-xs">Sin registros</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONFIGURACIÓN -->
+        <div class="section" id="settings">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">Meta de Ahorro</h2>
+              <input
+                type="number"
+                id="settingGoal"
+                placeholder="0.00"
+                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 mb-4"
+                min="0"
+                step="0.01"
+              />
+              <button
+                class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg"
+                onclick="setGoalFromSettings()"
+              >
+                Establecer
+              </button>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">Saldo Inicial</h2>
+              <input
+                type="number"
+                id="settingBalance"
+                placeholder="0.00"
+                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 mb-4"
+                min="0"
+                step="0.01"
+              />
+              <button
+                class="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg"
+                onclick="setBalance()"
+              >
+                Actualizar
+              </button>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+              <h2 class="text-white font-bold text-lg mb-6">Acciones</h2>
+              <div class="space-y-3">
+                <button
+                  class="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg"
+                  onclick="exportData()"
+                >
+                  <i class="fas fa-download mr-2"></i>Exportar
+                </button>
+                <button
+                  class="w-full px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg"
+                  onclick="resetData()"
+                >
+                  <i class="fas fa-trash mr-2"></i>Reiniciar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      let appData = {
+        goal: 0,
+        savings: [],
+        expenses: [],
+        photo: null,
+      };
+
+      let chart = null;
+
+      // NAVEGACIÓN
+      function changeSection(sectionName, element) {
+        document
+          .querySelectorAll(".section")
+          .forEach((s) => s.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((n) => n.classList.remove("active"));
+
+        document.getElementById(sectionName).classList.add("active");
+        element.classList.add("active");
+      }
+
+      function toggleMenu() {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        const hamburger = document.getElementById("hamburger");
+        const mainContent = document.getElementById("mainContent");
+
+        sidebar.classList.toggle("hidden");
+        overlay.classList.toggle("active");
+        hamburger.classList.toggle("active");
+        mainContent.classList.toggle("full-width");
+      }
+
+      // UTILIDADES
+      function showToast(msg, type = "info") {
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
+      function format(n) {
+        return parseFloat(n || 0)
+          .toFixed(2)
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      }
+
+      function save() {
+        localStorage.setItem("carsave", JSON.stringify(appData));
+      }
+
+      function load() {
+        const data = localStorage.getItem("carsave");
+        if (data) appData = JSON.parse(data);
+        document.getElementById("goalInput").value = appData.goal || "";
+        if (appData.photo) showPhoto(appData.photo);
+      }
+
+      // FOTO
+      document
+        .getElementById("photoInput")
+        .addEventListener("change", function (e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (file.size > 5 * 1024 * 1024) {
+            showToast("Imagen muy pesada (máx 5MB)", "error");
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            appData.photo = evt.target.result;
+            save();
+            showPhoto(evt.target.result);
+            showToast("✅ Foto actualizada", "success");
+          };
+          reader.onerror = () => showToast("Error al cargar", "error");
+          reader.readAsDataURL(file);
+        });
+
+      function showPhoto(data) {
+        const img = document.getElementById("carPhoto");
+        const placeholder = document.getElementById("carPlaceholder");
+        const deleteBtn = document.getElementById("deletePhotoBtn");
+
+        img.src = data;
+        img.style.display = "block";
+        placeholder.style.display = "none";
+        deleteBtn.style.display = "block";
+      }
+
+      function deletePhoto() {
+        if (!confirm("¿Eliminar foto?")) return;
+        appData.photo = null;
+        save();
+
+        document.getElementById("carPhoto").style.display = "none";
+        document.getElementById("carPlaceholder").style.display = "flex";
+        document.getElementById("deletePhotoBtn").style.display = "none";
+        showToast("Foto eliminada", "info");
+      }
+
+      // METAS
+      function setGoal() {
+        const goal = parseFloat(document.getElementById("goalInput").value);
+        if (isNaN(goal) || goal <= 0) {
+          showToast("Ingresa un monto válido", "warning");
+          return;
+        }
+        appData.goal = goal;
+        save();
+        update();
+        showToast(`✅ Meta: $${format(goal)}`, "success");
+      }
+
+      function setGoalFromSettings() {
+        const goal = parseFloat(document.getElementById("settingGoal").value);
+        if (isNaN(goal) || goal <= 0) {
+          showToast("Monto inválido", "warning");
+          return;
+        }
+        document.getElementById("goalInput").value = goal;
+        setGoal();
+        document.getElementById("settingGoal").value = "";
+      }
+
+      function setBalance() {
+        const balance = parseFloat(
+          document.getElementById("settingBalance").value
+        );
+        if (isNaN(balance) || balance < 0) return;
+
+        appData.savings.unshift({
+          amount: balance,
+          desc: "Saldo Inicial",
+          date: new Date().toLocaleString("es-ES"),
+        });
+        save();
+        update();
+        showToast(`✅ Saldo: $${format(balance)}`, "success");
+        document.getElementById("settingBalance").value = "";
+      }
+
+      // AHORROS
+      function addSaving() {
+        const monthly = parseFloat(
+          document.getElementById("monthlyInput").value || 0
+        );
+        const extra = parseFloat(
+          document.getElementById("extraInput").value || 0
+        );
+        const desc = document.getElementById("descInput").value || "Ahorro";
+        const total = monthly + extra;
+
+        if (total <= 0) {
+          showToast("Ingresa un monto mayor a $0", "warning");
+          return;
+        }
+
+        appData.savings.push({
+          amount: total,
+          desc,
+          date: new Date().toLocaleString("es-ES"),
+        });
+
+        document.getElementById("monthlyInput").value = "";
+        document.getElementById("extraInput").value = "";
+        document.getElementById("descInput").value = "";
+
+        save();
+        update();
+        showToast(`✅ +$${format(total)}`, "success");
+      }
+
+      function savingFromAdd() {
+        const monthly = parseFloat(
+          document.getElementById("addMonthly").value || 0
+        );
+        const extra = parseFloat(
+          document.getElementById("addExtra").value || 0
+        );
+        const desc = document.getElementById("addDesc").value || "Ahorro";
+        const total = monthly + extra;
+
+        if (total <= 0) {
+          showToast("Ingresa un monto mayor a $0", "warning");
+          return;
+        }
+
+        appData.savings.push({
+          amount: total,
+          desc,
+          date: new Date().toLocaleString("es-ES"),
+        });
+
+        document.getElementById("addMonthly").value = "";
+        document.getElementById("addExtra").value = "";
+        document.getElementById("addDesc").value = "";
+
+        save();
+        update();
+        showToast(`✅ +$${format(total)}`, "success");
+      }
+
+      // GASTOS
+      function addExpense() {
+        const amt = parseFloat(
+          document.getElementById("expenseAmtInput").value
+        );
+        const desc = document.getElementById("expenseDescInput").value;
+        const cat = document.getElementById("expenseCatInput").value;
+
+        if (isNaN(amt) || amt <= 0) {
+          showToast("Monto inválido", "warning");
+          return;
+        }
+        if (!desc) {
+          showToast("Describe el gasto", "warning");
+          return;
+        }
+
+        appData.expenses.push({
+          amount: amt,
+          desc,
+          cat,
+          date: new Date().toLocaleString("es-ES"),
+        });
+
+        document.getElementById("expenseAmtInput").value = "";
+        document.getElementById("expenseDescInput").value = "";
+
+        save();
+        update();
+        showToast(`⚠️ -$${format(amt)}`, "warning");
+      }
+
+      function expenseFromAdd() {
+        const amt = parseFloat(document.getElementById("addExpenseAmt").value);
+        const desc = document.getElementById("addExpenseDesc").value;
+        const cat = document.getElementById("addExpenseCat").value;
+
+        if (isNaN(amt) || amt <= 0) {
+          showToast("Monto inválido", "warning");
+          return;
+        }
+        if (!desc) {
+          showToast("Describe el gasto", "warning");
+          return;
+        }
+
+        appData.expenses.push({
+          amount: amt,
+          desc,
+          cat,
+          date: new Date().toLocaleString("es-ES"),
+        });
+
+        document.getElementById("addExpenseAmt").value = "";
+        document.getElementById("addExpenseDesc").value = "";
+
+        save();
+        update();
+        showToast(`⚠️ -$${format(amt)}`, "warning");
+      }
+
+      // ACTUALIZAR
+      function update() {
+        const savingsTotal = appData.savings.reduce((s, x) => s + x.amount, 0);
+        const expensesTotal = appData.expenses.reduce(
+          (s, x) => s + x.amount,
+          0
+        );
+        const total = Math.max(0, savingsTotal - expensesTotal);
+        const remaining = Math.max(0, appData.goal - total);
+        const percent =
+          appData.goal > 0 ? Math.min(100, (total / appData.goal) * 100) : 0;
+
+        document.getElementById("totalDisplay").textContent = format(total);
+        document.getElementById("remainingDisplay").textContent =
+          format(remaining);
+        document.getElementById("percentDisplay").textContent =
+          percent.toFixed(1);
+        document.getElementById("progressPercent").textContent =
+          percent.toFixed(1);
+        document.getElementById("progressFill").style.width = percent + "%";
+
+        // Meses
+        if (remaining <= 0) {
+          document.getElementById("monthsDisplay").textContent = "✅";
+        } else if (appData.savings.length === 0) {
+          document.getElementById("monthsDisplay").textContent = "--";
+        } else {
+          const monthlyAvg = savingsTotal / Math.max(1, appData.savings.length);
+          document.getElementById("monthsDisplay").textContent = Math.ceil(
+            remaining / monthlyAvg
+          );
+        }
+
+        updateLists();
+        updateChart(total, remaining);
+      }
+
+      function updateLists() {
+        // Últimos ahorros (Dashboard)
+        const savingsList = document.getElementById("savingsList");
+        if (appData.savings.length === 0) {
+          savingsList.innerHTML =
+            '<p class="text-slate-500 text-xs">Sin registros</p>';
+        } else {
+          savingsList.innerHTML = appData.savings
+            .slice(-5)
+            .reverse()
+            .map(
+              (s) => `
+                    <div style="padding:8px; background:#1e293b; border-left:3px solid #10b981; border-radius:4px;">
+                        <p style="color:#6ee7b7; font-size:12px; font-weight:bold;">${
+                          s.desc
+                        }</p>
+                        <p style="color:#94a3b8; font-size:11px;">+$${format(
+                          s.amount
+                        )}</p>
+                    </div>
+                `
+            )
+            .join("");
+        }
+
+        // Todos los ahorros (Historial)
+        const fullSavings = document.getElementById("fullSavings");
+        if (appData.savings.length === 0) {
+          fullSavings.innerHTML =
+            '<p class="text-slate-500 text-xs">Sin registros</p>';
+        } else {
+          fullSavings.innerHTML = appData.savings
+            .slice()
+            .reverse()
+            .map(
+              (s) => `
+                    <div style="padding:8px; background:#1e293b; border-left:3px solid #10b981; border-radius:4px;">
+                        <p style="color:#6ee7b7; font-size:12px; font-weight:bold;">${
+                          s.desc
+                        }</p>
+                        <p style="color:#94a3b8; font-size:11px;">+$${format(
+                          s.amount
+                        )}</p>
+                    </div>
+                `
+            )
+            .join("");
+        }
+
+        // Gastos
+        const expensesList = document.getElementById("expensesList");
+        if (appData.expenses.length === 0) {
+          expensesList.innerHTML =
+            '<p class="text-slate-500 text-xs">Sin registros</p>';
+        } else {
+          expensesList.innerHTML = appData.expenses
+            .slice(-5)
+            .reverse()
+            .map(
+              (e) => `
+                    <div style="padding:8px; background:#1e293b; border-left:3px solid #ef4444; border-radius:4px;">
+                        <p style="color:#fca5a5; font-size:12px; font-weight:bold;">${
+                          e.desc
+                        }</p>
+                        <p style="color:#94a3b8; font-size:11px;">-$${format(
+                          e.amount
+                        )}</p>
+                    </div>
+                `
+            )
+            .join("");
+        }
+
+        const fullExpenses = document.getElementById("fullExpenses");
+        if (appData.expenses.length === 0) {
+          fullExpenses.innerHTML =
+            '<p class="text-slate-500 text-xs">Sin registros</p>';
+        } else {
+          fullExpenses.innerHTML = appData.expenses
+            .slice()
+            .reverse()
+            .map(
+              (e) => `
+                    <div style="padding:8px; background:#1e293b; border-left:3px solid #ef4444; border-radius:4px;">
+                        <p style="color:#fca5a5; font-size:12px; font-weight:bold;">${
+                          e.desc
+                        }</p>
+                        <p style="color:#94a3b8; font-size:11px;">-$${format(
+                          e.amount
+                        )}</p>
+                    </div>
+                `
+            )
+            .join("");
+        }
+      }
+
+      function updateChart(saved, remaining) {
+        const canvas = document.getElementById("chartCanvas");
+        const ctx = canvas.getContext("2d");
+
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: ["Ahorrado", "Faltante"],
+            datasets: [
+              {
+                data: [saved, remaining],
+                backgroundColor: [
+                  "rgba(16, 185, 129, 0.8)",
+                  "rgba(51, 65, 85, 0.3)",
+                ],
+                borderColor: [
+                  "rgba(16, 185, 129, 1)",
+                  "rgba(100, 116, 139, 1)",
+                ],
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { color: "#cbd5e1", font: { size: 12 } },
+              },
+            },
+          },
+        });
+      }
+
+      // EXPORTAR Y REINICIAR
+      function exportData() {
+        const json = JSON.stringify(appData, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `carsave-${new Date().toISOString().split("T")[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("📥 Exportado", "success");
+      }
+
+      function resetData() {
+        if (!confirm("¿Eliminar TODO?")) return;
+        const confirm2 = prompt('Escribe "CONFIRMAR":');
+        if (confirm2 !== "CONFIRMAR") return;
+
+        appData = { goal: 0, savings: [], expenses: [], photo: null };
+        localStorage.removeItem("carsave");
+        location.reload();
+      }
+
+      // INIT
+      document.addEventListener("DOMContentLoaded", () => {
+        load();
+        update();
+        const date = new Date();
+        document.getElementById("currentDate").textContent =
+          date.toLocaleDateString("es-ES", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+
+        // En desktop, mostrar sidebar. En móvil, mantenerlo oculto
+        if (window.innerWidth > 768) {
+          document.getElementById("sidebar").classList.remove("hidden");
+        } else {
+          document.getElementById("sidebar").classList.add("hidden");
+        }
+      });
+    </script>
+  </body>
+</html>
